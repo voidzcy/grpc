@@ -370,6 +370,7 @@ def _verify_rpcs_to_given_backends(backends, timeout_sec, num_rpcs,
         error_msg = None
         stats = get_client_stats(num_rpcs, timeout_sec)
         rpcs_by_peer = stats.rpcs_by_peer
+        get_client_accumulated_stats()
         for backend in backends:
             if backend not in rpcs_by_peer:
                 error_msg = 'Backend %s did not receive load' % backend
