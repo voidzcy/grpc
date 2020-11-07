@@ -1089,7 +1089,7 @@ def test_circuit_breaking(gcp,
                                 circuit_breakers={'maxRequests': max_requests})
         wait_until_rpcs_in_flight(int(_WAIT_FOR_STATS_SEC + max_requests / args.qps),
                                   max_requests)
-        wait_until_all_rpcs_go_to_given_backends_or_fail([], _WAIT_FOR_BACKEND_SEC)
+        # wait_until_all_rpcs_go_to_given_backends_or_fail([], _WAIT_FOR_BACKEND_SEC)
         # wait_until_all_rpcs_fail(int(_WAIT_FOR_STATS_SEC + _NUM_TEST_RPCS / args.qps),
         #                          _NUM_TEST_RPCS)
         _assert_rpcs_in_flight(max_requests)
