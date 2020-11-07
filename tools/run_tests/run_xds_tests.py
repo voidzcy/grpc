@@ -423,6 +423,7 @@ def wait_until_rpcs_in_flight(timeout_sec, num_rpcs):
     logger.debug('Waiting for %d sec until %d RPCs in-flight' % (timeout_sec, num_rpcs))
     while time.time() - start_time <= timeout_sec:
         error_msg = None
+        get_client_stats(num_rpcs, timeout_sec)
         stats = get_client_accumulated_stats()
         rpcs_in_flight = (stats.num_rpcs_started
                           - stats.num_rpcs_succeeded
