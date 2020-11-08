@@ -401,26 +401,14 @@ def wait_until_all_rpcs_go_to_given_backends(backends,
                                    num_rpcs,
                                    allow_failures=False)
 
-def wait_until_all_rpcs_fail(timeout_sec, num_rpcs):
+def wait_until_rpcs_in_flight(timeout_sec, num_rpcs, threshold):
+    if threshold < 0 or threshold > 100:
+        raise ValueError('Value error: Threshold should be between 0 to 100')
+    threshold_fraction = threshold / 100.0
     start_time = time.time()
     error_msg = None
-    logger.debug('Waiting for %d sec until all of next %d RPCs fail' %
-                 (timeout_sec, num_rpcs))
-    while time.time() - start_time <= timeout_sec:
-        error_msg = None
-        stats = get_client_stats(num_rpcs, timeout_sec)
-        diff = num_rpcs - stats.num_failures
-        if not diff :
-            error_msg = 'Unexpected completion for %d RPCs' % diff
-            time.sleep(2)
-        else:
-            return
-    raise RpcDistributionError(error_msg)
-
-def wait_until_rpcs_in_flight(timeout_sec, num_rpcs):
-    start_time = time.time()
-    error_msg = None
-    logger.debug('Waiting for %d sec until %d RPCs in-flight' % (timeout_sec, num_rpcs))
+    logger.debug('Waiting for %d sec until %d RPCs (with %d%% tolerance) in-flight'
+                 % (timeout_sec, num_rpcs, threshold))
     while time.time() - start_time <= timeout_sec:
         error_msg = None
         get_client_stats(num_rpcs, timeout_sec)
@@ -428,13 +416,17 @@ def wait_until_rpcs_in_flight(timeout_sec, num_rpcs):
         rpcs_in_flight = (stats.num_rpcs_started
                           - stats.num_rpcs_succeeded
                           - stats.num_rpcs_failed)
-        if rpcs_in_flight < num_rpcs:
-            error_msg = ('Expected %d RPCs in-flight, actual: %d' %
-                        (num_rpcs, rpcs_in_flight))
+        if rpcs_in_flight < (num_rpcs * (1 - threshold_fraction)):
+            error_msg = ('actual(%d) < expected(%d - %d%%)' %
+                        (rpcs_in_flight, num_rpcs, threshold))
+            time.sleep(2)
+        elif rpcs_in_flight > (num_rpcs * (1 + threshold_fraction)):
+            error_msg = ('actual(%d) > expected(%d + %d%%)' %
+                        (rpcs_in_flight, num_rpcs, threshold))
             time.sleep(2)
         else:
             return
-    raise RpcDistributionError(error_msg)
+    raise Exception(error_msg)
 
 def compare_distributions(actual_distribution, expected_distribution,
                           threshold):
@@ -1077,32 +1069,21 @@ def test_circuit_breaking(gcp,
         configure_client([messages_pb2.ClientConfigureRequest.RpcType.UNARY_CALL],
                          [(messages_pb2.ClientConfigureRequest.RpcType.UNARY_CALL,
                            'rpc-behavior', 'keep-open')])
-        wait_until_all_rpcs_go_to_given_backends_or_fail([], _WAIT_FOR_BACKEND_SEC)
-        # wait_until_all_rpcs_fail(int(_WAIT_FOR_STATS_SEC + _NUM_TEST_RPCS / args.qps),
-        #                          _NUM_TEST_RPCS)
-        _assert_rpcs_in_flight(max_requests)
+        wait_until_rpcs_in_flight((_WAIT_FOR_BACKEND_SEC +
+                                   int(max_requests / args.qps / args.qps)),
+                                  max_requests, 1)
 
         # Increment circuit breakers max_requests threshold.
         max_requests = _NUM_TEST_RPCS * 2
         patch_backend_service(gcp, alternate_backend_service,
                                 [same_zone_instance_group],
                                 circuit_breakers={'maxRequests': max_requests})
-        wait_until_rpcs_in_flight(int(_WAIT_FOR_STATS_SEC + max_requests / args.qps),
-                                  max_requests)
-        # wait_until_all_rpcs_go_to_given_backends_or_fail([], _WAIT_FOR_BACKEND_SEC)
-        # wait_until_all_rpcs_fail(int(_WAIT_FOR_STATS_SEC + _NUM_TEST_RPCS / args.qps),
-        #                          _NUM_TEST_RPCS)
-        _assert_rpcs_in_flight(max_requests)
+        wait_until_rpcs_in_flight((_WAIT_FOR_BACKEND_SEC +
+                                   int(max_requests / args.qps / args.qps)),
+                                  max_requests, 1)
     finally:
         patch_url_map_backend_service(gcp, original_backend_service)
         patch_backend_service(gcp, alternate_backend_service, [])
-
-def _assert_rpcs_in_flight(num_rpcs):
-    stats = get_client_accumulated_stats()
-    rpcs_in_flight = (stats.num_rpcs_started
-                      - stats.num_rpcs_succeeded
-                      - stats.num_rpcs_failed)
-    compare_distributions([rpcs_in_flight], [num_rpcs], threshold=2)
 
 def get_serving_status(instance, service_port):
     with grpc.insecure_channel('%s:%d' % (instance, service_port)) as channel:
