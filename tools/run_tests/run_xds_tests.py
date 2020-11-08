@@ -370,7 +370,6 @@ def _verify_rpcs_to_given_backends(backends, timeout_sec, num_rpcs,
         error_msg = None
         stats = get_client_stats(num_rpcs, timeout_sec)
         rpcs_by_peer = stats.rpcs_by_peer
-        get_client_accumulated_stats()
         for backend in backends:
             if backend not in rpcs_by_peer:
                 error_msg = 'Backend %s did not receive load' % backend
@@ -411,7 +410,6 @@ def wait_until_rpcs_in_flight(timeout_sec, num_rpcs, threshold):
                  % (timeout_sec, num_rpcs, threshold))
     while time.time() - start_time <= timeout_sec:
         error_msg = None
-        get_client_stats(num_rpcs, timeout_sec)
         stats = get_client_accumulated_stats()
         rpcs_in_flight = (stats.num_rpcs_started
                           - stats.num_rpcs_succeeded
