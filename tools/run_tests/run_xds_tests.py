@@ -1175,6 +1175,12 @@ def test_circuit_breaking(gcp, original_backend_service, instance_group,
         patch_url_map_backend_service(gcp, original_backend_service)
         patch_backend_service(gcp, original_backend_service, [instance_group])
         patch_backend_service(gcp, alternate_backend_service, [])
+        result = gcp.compute.backendServices().get(
+            project=gcp.project, backendService=original_backend_service.name).execute()
+        logger.info("Original backend service: %s" % result)
+        result = gcp.compute.backendServices().get(
+            project=gcp.project, backendService=alternate_backend_service.name).execute()
+        logger.info("Alterenate backend service: %s" % result)
         set_validate_for_proxyless(gcp, True)
 
 
