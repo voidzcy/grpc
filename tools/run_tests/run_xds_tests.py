@@ -621,6 +621,24 @@ def test_gentle_failover(gcp,
 
 def test_ping_pong(gcp, backend_service, instance_group):
     logger.info('Running test_ping_pong')
+    # Try configuring max_stream_duration
+    if gcp.alpha_compute:
+        compute_to_use = gcp.alpha_compute
+    else:
+        compute_to_use = gcp.compute
+    config = {
+        'maxStreamDuration': { # Duration
+            'seconds': '2020', # string
+            'nanos': 2021 # integer
+        }
+    }
+    result = compute_to_use.backendServices().patch(
+        project=gcp.project, backendService=backend_service.name,
+        body=config).execute(num_retries=_GCP_API_RETRIES)
+    wait_for_global_operation(gcp,
+                              result['name'],
+                              timeout_sec=_WAIT_FOR_BACKEND_SEC)
+
     wait_for_healthy_backends(gcp, backend_service, instance_group)
     instance_names = get_instance_names(gcp, instance_group)
     wait_until_all_rpcs_go_to_given_backends(instance_names,
