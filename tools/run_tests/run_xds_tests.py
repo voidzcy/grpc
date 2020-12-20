@@ -16,11 +16,14 @@
 
 import argparse
 import googleapiclient.discovery
+import google.auth
+import google.auth.transport.requests
 import grpc
 import json
 import logging
 import os
 import random
+import requests
 import shlex
 import socket
 import subprocess
@@ -622,27 +625,39 @@ def test_gentle_failover(gcp,
 def test_ping_pong(gcp, backend_service, instance_group):
     logger.info('Running test_ping_pong')
     logger.info('Setting maxStreamDuration for backend service: %s', backend_service.name)
+    creds, project = google.auth.default()
+    auth_req = google.auth.transport.requests.Request()
+    creds.refresh(auth_req)
+    token = "Bearer " + creds.token
     # Try configuring max_stream_duration
-    if gcp.alpha_compute:
-        compute_to_use = gcp.alpha_compute
-    else:
-        compute_to_use = gcp.compute
+    # if gcp.alpha_compute:
+    #     compute_to_use = gcp.alpha_compute
+    # else:
+    #     compute_to_use = gcp.compute
     config = {
         'maxStreamDuration': { # Duration
             'seconds': '2020', # string
             'nanos': 2021 # integer
         }
     }
-    result = compute_to_use.backendServices().patch(
-        project=gcp.project, backendService=backend_service.name,
-        body=config).execute(num_retries=_GCP_API_RETRIES)
-    wait_for_global_operation(gcp,
-                              result['name'],
-                              timeout_sec=_WAIT_FOR_BACKEND_SEC)
-    result = compute_to_use.backendServices().get(
-        project=gcp.project, 
-        backendService=backend_service.name).execute(num_retries=_GCP_API_RETRIES)
-    logger.info('Backend service: %s', result)
+    headers = {
+        'Authorization': token,
+        'X-Goog-Experiments': 'EnableNetworkGrpcLbLaunch',
+        'Content-Type': 'application/json'
+    }
+    req = requests.request('PATCH', backend_service.url, headers=headers, data=config)
+    logger.info('Resp: %s', req)
+
+    # result = compute_to_use.backendServices().patch(
+    #     project=gcp.project, backendService=backend_service.name,
+    #     body=config).execute(num_retries=_GCP_API_RETRIES)
+    # wait_for_global_operation(gcp,
+    #                           result['name'],
+    #                           timeout_sec=_WAIT_FOR_BACKEND_SEC)
+    # result = compute_to_use.backendServices().get(
+    #     project=gcp.project, 
+    #     backendService=backend_service.name).execute(num_retries=_GCP_API_RETRIES)
+    # logger.info('Backend service: %s', result)
 
     wait_for_healthy_backends(gcp, backend_service, instance_group)
     instance_names = get_instance_names(gcp, instance_group)
