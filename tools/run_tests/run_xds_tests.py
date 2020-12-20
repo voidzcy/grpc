@@ -629,6 +629,7 @@ def test_ping_pong(gcp, backend_service, instance_group):
     auth_req = google.auth.transport.requests.Request()
     creds.refresh(auth_req)
     token = "Bearer " + creds.token
+    logger.info('Auth token %s', token)
     # Try configuring max_stream_duration
     # if gcp.alpha_compute:
     #     compute_to_use = gcp.alpha_compute
@@ -645,8 +646,9 @@ def test_ping_pong(gcp, backend_service, instance_group):
         'X-Goog-Experiments': 'EnableNetworkGrpcLbLaunch',
         'Content-Type': 'application/json'
     }
-    req = requests.request('PATCH', backend_service.url, headers=headers, data=config)
-    logger.info('Resp: %s', req)
+    url = 'https://www.googleapis.com/compute/staging_alpha/projects/545259160033/global/backendServices/test-backend-servicev2'
+    req = requests.patch(url, data=config, headers=headers)
+    logger.info('Resp: %s', req.text)
 
     # result = compute_to_use.backendServices().patch(
     #     project=gcp.project, backendService=backend_service.name,
