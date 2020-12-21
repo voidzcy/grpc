@@ -648,7 +648,12 @@ def test_ping_pong(gcp, backend_service, instance_group):
     }
     url = 'https://www.googleapis.com/compute/staging_alpha/projects/545259160033/global/backendServices/test-backend-servicev2'
     req = requests.patch(url, json=config, headers=headers)
-    logger.info('Resp: %s', req.text)
+    logger.info('patching: %s', req.text)
+    wait_for_global_operation(gcp, req.json()['name'])
+    logger.info('Patching maxStreamDuration completed')
+    req = requests.get(url, headers=headers)
+    logger.info('getting: %s', req.text)
+    time.sleep(120)
 
     # result = compute_to_use.backendServices().patch(
     #     project=gcp.project, backendService=backend_service.name,
