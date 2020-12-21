@@ -636,18 +636,18 @@ def test_ping_pong(gcp, backend_service, instance_group):
     # else:
     #     compute_to_use = gcp.compute
     config = {
-        'maxStreamDuration': { # Duration
-            'seconds': '2020', # string
-            'nanos': 2021 # integer
+        "maxStreamDuration": {
+            "seconds": "2020",
+            "nanos": 2021
         }
     }
     headers = {
-        'Authorization': token,
-        'X-Goog-Experiments': 'EnableNetworkGrpcLbLaunch',
-        'Content-Type': 'application/json'
+        "Authorization": token,
+        "X-Goog-Experiments": "EnableNetworkGrpcLbLaunch",
+        "Content-Type": "application/json"
     }
     url = 'https://www.googleapis.com/compute/staging_alpha/projects/545259160033/global/backendServices/test-backend-servicev2'
-    req = requests.patch(url, data=config, headers=headers)
+    req = requests.patch(url, json=config, headers=headers)
     logger.info('Resp: %s', req.text)
 
     # result = compute_to_use.backendServices().patch(
@@ -1578,7 +1578,7 @@ def create_target_proxy(gcp, name, validate_for_proxyless=True):
         config = {
             'name': name,
             'url_map': gcp.url_map.url,
-            'validate_for_proxyless': validate_for_proxyless
+            'validate_for_proxyless': False
         }
         logger.debug('Sending GCP request with body=%s', config)
         result = gcp.alpha_compute.targetGrpcProxies().insert(
