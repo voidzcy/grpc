@@ -1528,18 +1528,48 @@ def add_backend_service(gcp, name):
     else:
         protocol = 'HTTP2'
         compute_to_use = gcp.compute
+    creds, project = google.auth.default()
+    auth_req = google.auth.transport.requests.Request()
+    creds.refresh(auth_req)
+    token = "Bearer " + creds.token
+    logger.info('Auth token %s', token)
     config = {
-        'name': name,
-        'loadBalancingScheme': 'INTERNAL_SELF_MANAGED',
-        'healthChecks': [gcp.health_check.url],
-        'portName': 'grpc',
-        'protocol': protocol
+        "name": name,
+        "loadBalancingScheme": "INTERNAL_SELF_MANAGED",
+        "healthChecks": [gcp.health_check.url],
+        "portName": "grpc",
+        "protocol": protocol,
+        "maxStreamDuration": {
+            "seconds": "2020",
+            "nanos": 2021
+        }
     }
-    logger.debug('Sending GCP request with body=%s', config)
-    result = compute_to_use.backendServices().insert(
-        project=gcp.project, body=config).execute(num_retries=_GCP_API_RETRIES)
-    wait_for_global_operation(gcp, result['name'])
-    backend_service = GcpResource(config['name'], result['targetLink'])
+    headers = {
+        "Authorization": token,
+        "X-Goog-Experiments": "EnableNetworkGrpcLbLaunch",
+        "Content-Type": "application/json"
+    }
+    url = 'https://www.googleapis.com/compute/staging_alpha/projects/545259160033/global/backendServices'
+    req = requests.post(url, json=config, headers=headers)
+    logger.info('Creating backend service: %s', req.text)
+    wait_for_global_operation(gcp, req.json()['name'])
+    logger.info('Creating backend service completed')
+    req = requests.get(url, headers=headers)
+    logger.info('Get backend services: %s', req.text)
+    backend_service = GcpResource(config['name'], req.json()['targetLink'])
+    
+    # config = {
+    #     'name': name,
+    #     'loadBalancingScheme': 'INTERNAL_SELF_MANAGED',
+    #     'healthChecks': [gcp.health_check.url],
+    #     'portName': 'grpc',
+    #     'protocol': protocol
+    # }
+    # logger.debug('Sending GCP request with body=%s', config)
+    # result = compute_to_use.backendServices().insert(
+    #     project=gcp.project, body=config).execute(num_retries=_GCP_API_RETRIES)
+    # wait_for_global_operation(gcp, result['name'])
+    # backend_service = GcpResource(config['name'], result['targetLink'])
     gcp.backend_services.append(backend_service)
     return backend_service
 
