@@ -2044,7 +2044,8 @@ else:
         alpha_compute = googleapiclient.discovery.build('compute', 'alpha')
 
 try:
-    gcp = GcpState(compute, alpha_compute, args.project_id)
+    # Always use alpha_compute.
+    gcp = GcpState(alpha_compute, alpha_compute, args.project_id)
     gcp_suffix = args.gcp_suffix
     health_check_name = _BASE_HEALTH_CHECK_NAME + gcp_suffix
     if not args.use_existing_gcp_resources:
