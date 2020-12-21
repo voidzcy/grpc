@@ -2048,14 +2048,8 @@ try:
     gcp = GcpState(alpha_compute, alpha_compute, args.project_id)
     gcp_suffix = args.gcp_suffix
     health_check_name = _BASE_HEALTH_CHECK_NAME + gcp_suffix
-    if not args.use_existing_gcp_resources:
-        if args.keep_gcp_resources:
-            # Auto-generating a unique suffix in case of conflict should not be
-            # combined with --keep_gcp_resources, as the suffix actually used
-            # for GCP resources will not match the provided --gcp_suffix value.
-            num_attempts = 1
-        else:
-            num_attempts = 5
+    if True:
+        num_attempts = 5
         for i in range(num_attempts):
             try:
                 logger.info('Using GCP suffix %s', gcp_suffix)
@@ -2079,7 +2073,7 @@ try:
     instance_group_name = _BASE_INSTANCE_GROUP_NAME + gcp_suffix
     same_zone_instance_group_name = _BASE_INSTANCE_GROUP_NAME + '-same-zone' + gcp_suffix
     secondary_zone_instance_group_name = _BASE_INSTANCE_GROUP_NAME + '-secondary-zone' + gcp_suffix
-    if args.use_existing_gcp_resources:
+    if False:
         logger.info('Reusing existing GCP resources')
         get_health_check(gcp, health_check_name)
         try:
@@ -2300,6 +2294,5 @@ try:
             logger.error('Test case(s) %s failed', failed_tests)
             sys.exit(1)
 finally:
-    if not args.keep_gcp_resources:
-        logger.info('Cleaning up GCP resources. This may take some time.')
-        clean_up(gcp)
+    logger.info('Cleaning up GCP resources. This may take some time.')
+    clean_up(gcp)
