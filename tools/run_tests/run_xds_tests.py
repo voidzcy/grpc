@@ -643,7 +643,7 @@ def test_ping_pong(gcp, backend_service, instance_group):
     }
     headers = {
         "Authorization": token,
-        "X-Goog-Experiments": "EnableNetworkGrpcLbLaunch",
+        "X-Goog-Experiments": "EnableNetworkMaxStreamDurationWithTd",
         "Content-Type": "application/json"
     }
     url = 'https://www.googleapis.com/compute/staging_alpha/projects/545259160033/global/backendServices/test-backend-servicev2'
@@ -1554,9 +1554,9 @@ def add_backend_service(gcp, name):
     logger.info('Creating backend service: %s', req.text)
     wait_for_global_operation(gcp, req.json()['name'])
     logger.info('Creating backend service completed')
+    backend_service = GcpResource(config['name'], req.json()['targetLink'])
     req = requests.get(url, headers=headers)
     logger.info('Get backend services: %s', req.text)
-    backend_service = GcpResource(config['name'], req.json()['targetLink'])
     
     # config = {
     #     'name': name,
