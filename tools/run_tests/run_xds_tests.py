@@ -624,36 +624,36 @@ def test_gentle_failover(gcp,
 
 def test_ping_pong(gcp, backend_service, instance_group):
     logger.info('Running test_ping_pong')
-    logger.info('Setting maxStreamDuration for backend service: %s', backend_service.name)
-    creds, project = google.auth.default()
-    auth_req = google.auth.transport.requests.Request()
-    creds.refresh(auth_req)
-    token = "Bearer " + creds.token
-    logger.info('Auth token %s', token)
-    # Try configuring max_stream_duration
-    # if gcp.alpha_compute:
-    #     compute_to_use = gcp.alpha_compute
-    # else:
-    #     compute_to_use = gcp.compute
-    config = {
-        "maxStreamDuration": {
-            "seconds": "2020",
-            "nanos": 2021
-        }
-    }
-    headers = {
-        "Authorization": token,
-        "X-Goog-Experiments": "EnableNetworkMaxStreamDurationWithTd",
-        "Content-Type": "application/json"
-    }
-    url = 'https://www.googleapis.com/compute/staging_alpha/projects/545259160033/global/backendServices/test-backend-servicev2'
-    req = requests.patch(url, json=config, headers=headers)
-    logger.info('patching: %s', req.text)
-    wait_for_global_operation(gcp, req.json()['name'])
-    logger.info('Patching maxStreamDuration completed')
-    req = requests.get(url, headers=headers)
-    logger.info('getting: %s', req.text)
-    time.sleep(120)
+    # logger.info('Setting maxStreamDuration for backend service: %s', backend_service.name)
+    # creds, project = google.auth.default()
+    # auth_req = google.auth.transport.requests.Request()
+    # creds.refresh(auth_req)
+    # token = "Bearer " + creds.token
+    # logger.info('Auth token %s', token)
+    # # Try configuring max_stream_duration
+    # # if gcp.alpha_compute:
+    # #     compute_to_use = gcp.alpha_compute
+    # # else:
+    # #     compute_to_use = gcp.compute
+    # config = {
+    #     "maxStreamDuration": {
+    #         "seconds": "2020",
+    #         "nanos": 2021
+    #     }
+    # }
+    # headers = {
+    #     "Authorization": token,
+    #     "X-Goog-Experiments": "EnableNetworkMaxStreamDurationWithTd",
+    #     "Content-Type": "application/json"
+    # }
+    # url = 'https://www.googleapis.com/compute/staging_alpha/projects/545259160033/global/backendServices/test-backend-servicev2'
+    # req = requests.patch(url, json=config, headers=headers)
+    # logger.info('patching: %s', req.text)
+    # wait_for_global_operation(gcp, req.json()['name'])
+    # logger.info('Patching maxStreamDuration completed')
+    # req = requests.get(url, headers=headers)
+    # logger.info('getting: %s', req.text)
+    # time.sleep(120)
 
     # result = compute_to_use.backendServices().patch(
     #     project=gcp.project, backendService=backend_service.name,
@@ -1557,19 +1557,6 @@ def add_backend_service(gcp, name):
     backend_service = GcpResource(config['name'], req.json()['targetLink'])
     req = requests.get(url, headers=headers)
     logger.info('Get backend services: %s', req.text)
-    
-    # config = {
-    #     'name': name,
-    #     'loadBalancingScheme': 'INTERNAL_SELF_MANAGED',
-    #     'healthChecks': [gcp.health_check.url],
-    #     'portName': 'grpc',
-    #     'protocol': protocol
-    # }
-    # logger.debug('Sending GCP request with body=%s', config)
-    # result = compute_to_use.backendServices().insert(
-    #     project=gcp.project, body=config).execute(num_retries=_GCP_API_RETRIES)
-    # wait_for_global_operation(gcp, result['name'])
-    # backend_service = GcpResource(config['name'], result['targetLink'])
     gcp.backend_services.append(backend_service)
     return backend_service
 
@@ -1829,26 +1816,50 @@ def patch_backend_service(gcp,
                           instance_groups,
                           balancing_mode='UTILIZATION',
                           circuit_breakers=None):
-    if gcp.alpha_compute:
-        compute_to_use = gcp.alpha_compute
-    else:
-        compute_to_use = gcp.compute
+    # if gcp.alpha_compute:
+    #     compute_to_use = gcp.alpha_compute
+    # else:
+    #     compute_to_use = gcp.compute
+    # config = {
+    #     'backends': [{
+    #         'group': instance_group.url,
+    #         'balancingMode': balancing_mode,
+    #         'maxRate': 1 if balancing_mode == 'RATE' else None
+    #     } for instance_group in instance_groups],
+    #     'circuitBreakers': circuit_breakers,
+    # }
+    # logger.debug('Sending GCP request with body=%s', config)
+    # result = compute_to_use.backendServices().patch(
+    #     project=gcp.project, backendService=backend_service.name,
+    #     body=config).execute(num_retries=_GCP_API_RETRIES)
+    # wait_for_global_operation(gcp,
+    #                           result['name'],
+    #                           timeout_sec=_WAIT_FOR_BACKEND_SEC)
+    creds, project = google.auth.default()
+    auth_req = google.auth.transport.requests.Request()
+    creds.refresh(auth_req)
+    token = "Bearer " + creds.token
+    logger.info('Auth token %s', token)
     config = {
-        'backends': [{
-            'group': instance_group.url,
-            'balancingMode': balancing_mode,
-            'maxRate': 1 if balancing_mode == 'RATE' else None
+        "backends": [{
+            "group": instance_group.url,
+            "balancingMode": balancing_mode,
+            "maxRate": 1 if balancing_mode == "RATE" else None
         } for instance_group in instance_groups],
-        'circuitBreakers': circuit_breakers,
+        "circuitBreakers": circuit_breakers,
     }
-    logger.debug('Sending GCP request with body=%s', config)
-    result = compute_to_use.backendServices().patch(
-        project=gcp.project, backendService=backend_service.name,
-        body=config).execute(num_retries=_GCP_API_RETRIES)
-    wait_for_global_operation(gcp,
-                              result['name'],
-                              timeout_sec=_WAIT_FOR_BACKEND_SEC)
-
+    headers = {
+        "Authorization": token,
+        "X-Goog-Experiments": "EnableNetworkMaxStreamDurationWithTd",
+        "Content-Type": "application/json"
+    }
+    url = 'https://www.googleapis.com/compute/staging_alpha/projects/545259160033/global/backendServices'
+    req = requests.patch(url, json=config, headers=headers)
+    logger.info('Patching backend service: %s', req.text)
+    wait_for_global_operation(gcp, req.json()['name'])
+    logger.info('Patching backend service completed')
+    req = requests.get(url, headers=headers)
+    logger.info('Get backend services: %s', req.text)
 
 def resize_instance_group(gcp,
                           instance_group,
