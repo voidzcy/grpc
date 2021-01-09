@@ -1853,7 +1853,7 @@ def patch_backend_service(gcp,
         "X-Goog-Experiments": "EnableNetworkMaxStreamDurationWithTd",
         "Content-Type": "application/json"
     }
-    url = 'https://www.googleapis.com/compute/staging_alpha/projects/545259160033/global/backendServices'
+    url = 'https://www.googleapis.com/compute/staging_alpha/projects/545259160033/global/backendServices/' + backend_service.name
     req = requests.patch(url, json=config, headers=headers)
     logger.info('Patching backend service: %s', req.text)
     wait_for_global_operation(gcp, req.json()['name'])
