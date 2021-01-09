@@ -1546,7 +1546,7 @@ def add_backend_service(gcp, name):
     }
     headers = {
         "Authorization": token,
-        "X-Goog-Experiments": "EnableNetworkGrpcLbLaunch",
+        "X-Goog-Experiments": "EnableNetworkMaxStreamDurationWithTd",
         "Content-Type": "application/json"
     }
     url = 'https://www.googleapis.com/compute/staging_alpha/projects/545259160033/global/backendServices'
