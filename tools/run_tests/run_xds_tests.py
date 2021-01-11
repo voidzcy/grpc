@@ -1562,23 +1562,60 @@ def add_backend_service(gcp, name):
 
 
 def create_url_map(gcp, name, backend_service, host_name):
+    # config = {
+    #     'name': name,
+    #     'defaultService': backend_service.url,
+    #     'pathMatchers': [{
+    #         'name': _PATH_MATCHER_NAME,
+    #         'defaultService': backend_service.url,
+    #     }],
+    #     'hostRules': [{
+    #         'hosts': [host_name],
+    #         'pathMatcher': _PATH_MATCHER_NAME
+    #     }]
+    # }
+    # logger.debug('Sending GCP request with body=%s', config)
+    # result = gcp.compute.urlMaps().insert(
+    #     project=gcp.project, body=config).execute(num_retries=_GCP_API_RETRIES)
+    # wait_for_global_operation(gcp, result['name'])
+    # gcp.url_map = GcpResource(config['name'], result['targetLink'])
+
+    creds, project = google.auth.default()
+    auth_req = google.auth.transport.requests.Request()
+    creds.refresh(auth_req)
+    token = "Bearer " + creds.token
+    logger.info('Auth token %s', token)
     config = {
-        'name': name,
-        'defaultService': backend_service.url,
-        'pathMatchers': [{
-            'name': _PATH_MATCHER_NAME,
-            'defaultService': backend_service.url,
+        "name": name,
+        "defaultService": backend_service.url,
+        "pathMatchers": [{
+            "name": _PATH_MATCHER_NAME,
+            "defaultService": backend_service.url,
+            "defaultRouteAction": {
+                "maxStreamDuration": {
+                    "seconds": "2020",
+                    "nanos": 2021
+                }
+            }
         }],
-        'hostRules': [{
-            'hosts': [host_name],
-            'pathMatcher': _PATH_MATCHER_NAME
+        "hostRules": [{
+            "hosts": [host_name],
+            "pathMatcher": _PATH_MATCHER_NAME
         }]
     }
-    logger.debug('Sending GCP request with body=%s', config)
-    result = gcp.compute.urlMaps().insert(
-        project=gcp.project, body=config).execute(num_retries=_GCP_API_RETRIES)
-    wait_for_global_operation(gcp, result['name'])
-    gcp.url_map = GcpResource(config['name'], result['targetLink'])
+    headers = {
+        "Authorization": token,
+        "X-Goog-Experiments": "EnableNetworkMaxStreamDurationWithTd",
+        "Content-Type": "application/json"
+    }
+    url = 'https://www.googleapis.com/compute/staging_alpha/projects/545259160033/global/urlMaps'
+    req = requests.post(url, json=config, headers=headers)
+    logger.info('Creating url map: %s', req.text)
+    wait_for_global_operation(gcp, req.json()['name'])
+    logger.info('Creating url map completed')
+    gcp.url_map = GcpResource(config['name'], req.json()['targetLink'])
+    req = requests.get(url, headers=headers)
+    logger.info('Get url map: %s', req.text)
 
 
 def patch_url_map_host_rule_with_port(gcp, name, backend_service, host_name):
@@ -1886,31 +1923,63 @@ def patch_url_map_backend_service(gcp,
 
     Only one of backend_service and service_with_weights can be not None.
     '''
-    if backend_service and services_with_weights:
-        raise ValueError(
-            'both backend_service and service_with_weights are not None.')
+    # if backend_service and services_with_weights:
+    #     raise ValueError(
+    #         'both backend_service and service_with_weights are not None.')
 
-    default_service = backend_service.url if backend_service else None
-    default_route_action = {
-        'weightedBackendServices': [{
-            'backendService': service.url,
-            'weight': w,
-        } for service, w in services_with_weights.items()]
-    } if services_with_weights else None
+    # default_service = backend_service.url if backend_service else None
+    # default_route_action = {
+    #     'weightedBackendServices': [{
+    #         'backendService': service.url,
+    #         'weight': w,
+    #     } for service, w in services_with_weights.items()]
+    # } if services_with_weights else None
 
+    # config = {
+    #     'pathMatchers': [{
+    #         'name': _PATH_MATCHER_NAME,
+    #         'defaultService': default_service,
+    #         'defaultRouteAction': default_route_action,
+    #         'routeRules': route_rules,
+    #     }]
+    # }
+    # logger.debug('Sending GCP request with body=%s', config)
+    # result = gcp.compute.urlMaps().patch(
+    #     project=gcp.project, urlMap=gcp.url_map.name,
+    #     body=config).execute(num_retries=_GCP_API_RETRIES)
+    # wait_for_global_operation(gcp, result['name'])
+
+    creds, project = google.auth.default()
+    auth_req = google.auth.transport.requests.Request()
+    creds.refresh(auth_req)
+    token = "Bearer " + creds.token
+    logger.info('Auth token %s', token)
     config = {
-        'pathMatchers': [{
-            'name': _PATH_MATCHER_NAME,
-            'defaultService': default_service,
-            'defaultRouteAction': default_route_action,
-            'routeRules': route_rules,
+        "pathMatchers": [{
+            "name": _PATH_MATCHER_NAME,
+            "defaultService": default_service,
+            "defaultRouteAction": {
+                "maxStreamDuration": {
+                    "seconds": "2020",
+                    "nanos": 2021
+                }
+            },
+            "routeRules": route_rules,
         }]
     }
-    logger.debug('Sending GCP request with body=%s', config)
-    result = gcp.compute.urlMaps().patch(
-        project=gcp.project, urlMap=gcp.url_map.name,
-        body=config).execute(num_retries=_GCP_API_RETRIES)
-    wait_for_global_operation(gcp, result['name'])
+    headers = {
+        "Authorization": token,
+        "X-Goog-Experiments": "EnableNetworkMaxStreamDurationWithTd",
+        "Content-Type": "application/json"
+    }
+    url = 'https://www.googleapis.com/compute/staging_alpha/projects/545259160033/global/urlMap/' + gcp.url_map.name
+    req = requests.patch(url, json=config, headers=headers)
+    logging.info('patching urlMap: %s', req.text)
+    time.sleep(30)
+    logging.info('done patching urlMap maxStreamDuration')
+    wait_for_global_operation(gcp, req.json()['name'])
+    req = requests.get(url, headers=headers)
+    logging.info('get urlMap again: %s', req.json())
 
 
 def wait_for_instance_group_to_reach_expected_size(gcp, instance_group,
